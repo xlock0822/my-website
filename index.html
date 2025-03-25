@@ -3,48 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Website</title>
+    <title>Xavier Lockett - Personal Website</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
-    <header class="bg-white shadow-md">
+<body class="bg-gray-50">
+    <header class="bg-blue-600 text-white shadow-lg">
         <nav class="container mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
-                <div class="text-xl font-bold text-gray-800">My Website</div>
-                <div class="space-x-4">
-                    <a href="#" class="text-gray-600 hover:text-gray-800">Home</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-800">About</a>
-                    <a href="#" class="text-gray-600 hover:text-gray-800">Contact</a>
+                <div class="text-2xl font-bold">Xavier Lockett</div>
+                <div class="space-x-6">
+                    <a href="#home" class="hover:text-blue-200 transition">Home</a>
+                    <a href="#projects" class="hover:text-blue-200 transition">Projects</a>
+                    <a href="#contact" class="hover:text-blue-200 transition">Contact</a>
                 </div>
             </div>
         </nav>
     </header>
 
-    <main class="container mx-auto px-6 py-8">
-        <section class="mb-12">
-            <h1 class="text-4xl font-bold text-gray-800 mb-4">Welcome to My Website</h1>
-            <p class="text-gray-600">This is a modern, responsive website built with HTML and Tailwind CSS.</p>
+    <main class="container mx-auto px-6 py-12">
+        <section id="home" class="mb-16">
+            <div class="text-center mb-12">
+                <h1 class="text-5xl font-bold text-gray-800 mb-4">Welcome to My Portfolio</h1>
+                <p class="text-xl text-gray-600">Software Developer & Creative Thinker</p>
+            </div>
         </section>
 
-        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-semibold mb-2">Feature 1</h2>
-                <p class="text-gray-600">Description of feature 1 goes here.</p>
+        <section id="projects" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Featured Projects</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">Project One</h3>
+                        <p class="text-gray-600 mb-4">Description of your first major project and its impact.</p>
+                        <a href="#" class="text-blue-600 hover:text-blue-800">Learn More →</a>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">Project Two</h3>
+                        <p class="text-gray-600 mb-4">Description of your second project and its key features.</p>
+                        <a href="#" class="text-blue-600 hover:text-blue-800">Learn More →</a>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">Project Three</h3>
+                        <p class="text-gray-600 mb-4">Description of your third project and its achievements.</p>
+                        <a href="#" class="text-blue-600 hover:text-blue-800">Learn More →</a>
+                    </div>
+                </div>
             </div>
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-semibold mb-2">Feature 2</h2>
-                <p class="text-gray-600">Description of feature 2 goes here.</p>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-semibold mb-2">Feature 3</h2>
-                <p class="text-gray-600">Description of feature 3 goes here.</p>
+        </section>
+
+        <section id="contact" class="bg-white rounded-lg shadow-md p-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Get In Touch</h2>
+            <div class="space-y-4">
+                <p class="text-gray-600">Interested in collaboration? Let's connect!</p>
+                <div class="flex space-x-4">
+                    <a href="https://github.com/xlock0822" class="text-blue-600 hover:text-blue-800">GitHub</a>
+                    <a href="#" class="text-blue-600 hover:text-blue-800">LinkedIn</a>
+                    <a href="mailto:your.email@example.com" class="text-blue-600 hover:text-blue-800">Email</a>
+                </div>
             </div>
         </section>
     </main>
 
     <footer class="bg-gray-800 text-white mt-12">
         <div class="container mx-auto px-6 py-4">
-            <p class="text-center">&copy; 2025 My Website. All rights reserved.</p>
+            <p class="text-center">&copy; 2025 Xavier Lockett. All rights reserved.</p>
         </div>
     </footer>
 </body>
