@@ -3,276 +3,491 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open World Game</title>
+    <title>4D Open World Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/four.js@1.0.0/build/four.min.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
+        body { margin: 0; overflow: hidden; }
         canvas { display: block; }
         #ui-overlay {
             position: fixed;
             top: 10px;
             left: 10px;
-            color: white;
-            font-family: Arial, sans-serif;
-            pointer-events: none;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
+            z-index: 1000;
         }
-        #action-menu {
+        #stats {
             position: fixed;
-            right: 10px;
             top: 10px;
+            right: 10px;
             background: rgba(0,0,0,0.7);
             padding: 10px;
-            color: white;
+            border-radius: 5px;
+            color: #fff;
+        }
+        #inventory {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: #fff;
             display: none;
         }
-        .menu-item {
-            cursor: pointer;
-            padding: 5px;
-            margin: 2px;
-            background: rgba(255,255,255,0.1);
+        .menu {
+            position: fixed;
+            padding: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
         }
-        .menu-item:hover {
-            background: rgba(255,255,255,0.3);
+        .action-button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .action-button:hover {
+            background: rgba(255,255,255,0.4);
+        }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            z-index: 2000;
+        }
+        #minimap {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            border: 2px solid white;
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+    <div id="loading-screen">Loading World...</div>
     <div id="ui-overlay">
-        <div id="player-stats">Role: Civilian | Reputation: 0</div>
-        <div id="location-info">Current Area: City Center</div>
+        <h2 id="location">Downtown District</h2>
+        <div id="mission-info"></div>
     </div>
-    <div id="action-menu"></div>
+    <div id="stats">
+        Health: 100 | Energy: 100 | Money: $1000
+    </div>
+    <div id="inventory"></div>
+    <div id="minimap"></div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const uiOverlay = document.getElementById('ui-overlay');
-        const actionMenu = document.getElementById('action-menu');
-
-        // Set canvas size
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-
-        // Game state
-        const gameState = {
-            player: {
-                x: canvas.width / 2,
-                y: canvas.height / 2,
-                speed: 5,
-                role: 'civilian',
-                reputation: 0,
-                preferences: {
-                    combat: 0,
-                    social: 0,
-                    exploration: 0
-                }
-            },
-            world: {
-                npcs: [],
-                buildings: [],
-                currentArea: 'City Center',
-                time: 0
-            },
-            activities: {
-                available: ['explore', 'interact', 'mission', 'fight'],
-                current: null
-            }
+        // Initialize core systems
+        let scene, camera, renderer, world4D;
+        let player, NPCs = [], buildings = [], vehicles = [];
+        let timeScale = 1;
+        let worldState = {
+            time: 0,
+            weather: 'clear',
+            events: []
         };
 
-        // Generate random NPCs
-        function generateNPCs() {
-            for (let i = 0; i < 10; i++) {
-                gameState.world.npcs.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    type: ['civilian', 'merchant', 'guard'][Math.floor(Math.random() * 3)],
-                    color: `hsl(${Math.random() * 360}, 70%, 50%)`
-                });
-            }
-        }
+        // Player state
+        const playerState = {
+            health: 100,
+            energy: 100,
+            money: 1000,
+            inventory: [],
+            skills: {
+                combat: 0,
+                driving: 0,
+                stealth: 0,
+                charisma: 0
+            },
+            reputation: {
+                police: 0,
+                criminals: 0,
+                civilians: 0
+            },
+            currentMission: null
+        };
 
-        // Generate buildings
-        function generateBuildings() {
-            for (let i = 0; i < 15; i++) {
-                gameState.world.buildings.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    width: 50 + Math.random() * 100,
-                    height: 50 + Math.random() * 100,
-                    type: ['shop', 'house', 'police'][Math.floor(Math.random() * 3)]
-                });
-            }
-        }
+        // Initialize 4D world
+        function init4DWorld() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
 
-        // Input handling
-        const keys = {};
-        window.addEventListener('keydown', e => keys[e.key] = true);
-        window.addEventListener('keydown', e => {
-            if (e.key === 'e') {
-                toggleActionMenu();
-            }
-        });
-        window.addEventListener('keyup', e => keys[e.key] = false);
+            // Add ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
 
-        // Action menu
-        function toggleActionMenu() {
-            const nearby = checkNearbyInteractions();
-            if (nearby.length > 0) {
-                actionMenu.style.display = 'block';
-                actionMenu.innerHTML = nearby.map(action => 
-                    `<div class="menu-item" onclick="performAction('${action}')">${action}</div>`
-                ).join('');
-            } else {
-                actionMenu.style.display = 'none';
-            }
-        }
+            // Add directional light (sun)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 5, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
 
-        function checkNearbyInteractions() {
-            const actions = [];
-            // Check NPCs
-            for (const npc of gameState.world.npcs) {
-                const distance = Math.hypot(npc.x - gameState.player.x, npc.y - gameState.player.y);
-                if (distance < 50) {
-                    actions.push(`Talk to ${npc.type}`);
-                    if (npc.type === 'merchant') actions.push('Trade');
-                    if (npc.type === 'guard' && gameState.player.role === 'civilian') 
-                        actions.push('Join Police Force');
-                }
-            }
-            // Check buildings
-            for (const building of gameState.world.buildings) {
-                if (isPlayerNearBuilding(building)) {
-                    actions.push(`Enter ${building.type}`);
-                }
-            }
-            return actions;
-        }
-
-        function isPlayerNearBuilding(building) {
-            return Math.abs(gameState.player.x - building.x) < 50 &&
-                   Math.abs(gameState.player.y - building.y) < 50;
-        }
-
-        function performAction(action) {
-            console.log(`Performing action: ${action}`);
-            // Update player preferences based on chosen actions
-            if (action.includes('fight')) gameState.player.preferences.combat++;
-            if (action.includes('Talk')) gameState.player.preferences.social++;
-            if (action.includes('Enter')) gameState.player.preferences.exploration++;
+            // Initialize 4D components
+            initializeFourDimensions();
             
-            // Adjust game based on preferences
-            adaptGameToPreferences();
+            // Generate world
+            generateTerrain();
+            generateBuildings();
+            spawnNPCs();
+            initializeVehicles();
+            
+            // Set up physics
+            initializePhysics();
+            
+            // Start animation loop
+            animate();
         }
 
-        function adaptGameToPreferences() {
-            const prefs = gameState.player.preferences;
-            if (prefs.combat > Math.max(prefs.social, prefs.exploration)) {
-                // Spawn more combat opportunities
-                spawnCombatEvents();
-            } else if (prefs.social > Math.max(prefs.combat, prefs.exploration)) {
-                // Spawn more social interactions
-                spawnSocialEvents();
-            } else {
-                // Spawn more exploration opportunities
-                spawnExplorationEvents();
+        function initializeFourDimensions() {
+            // 4D space-time manipulation
+            world4D = {
+                dimensions: ['x', 'y', 'z', 'w'],
+                currentTimeline: 0,
+                timeflowRate: 1,
+                alternateRealities: [],
+                
+                warpSpace: function(x, y, z, w) {
+                    // Implementation of 4D space warping
+                },
+                
+                timelineShift: function(delta) {
+                    // Timeline manipulation logic
+                }
+            };
+        }
+
+        function generateTerrain() {
+            // Create procedural terrain
+            const geometry = new THREE.PlaneGeometry(1000, 1000, 100, 100);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x3a8c3a,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const terrain = new THREE.Mesh(geometry, material);
+            terrain.rotation.x = -Math.PI / 2;
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+        }
+
+        function generateBuildings() {
+            const buildingTypes = [
+                { type: 'skyscraper', height: 100, texture: 'glass' },
+                { type: 'house', height: 20, texture: 'brick' },
+                { type: 'shop', height: 30, texture: 'concrete' }
+            ];
+
+            for (let i = 0; i < 50; i++) {
+                const type = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
+                createBuilding(type);
             }
         }
 
-        function spawnCombatEvents() {
-            // Add combat-related NPCs and events
-            gameState.world.npcs.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                type: 'opponent',
-                color: 'red'
+        function createBuilding(type) {
+            const geometry = new THREE.BoxGeometry(
+                10 + Math.random() * 20,
+                type.height,
+                10 + Math.random() * 20
+            );
+            const material = new THREE.MeshStandardMaterial({
+                color: Math.random() * 0xffffff,
+                roughness: 0.7,
+                metalness: 0.3
             });
+            const building = new THREE.Mesh(geometry, material);
+            building.position.set(
+                Math.random() * 1000 - 500,
+                type.height / 2,
+                Math.random() * 1000 - 500
+            );
+            building.castShadow = true;
+            building.receiveShadow = true;
+            scene.add(building);
+            buildings.push(building);
         }
 
-        function spawnSocialEvents() {
-            // Add social NPCs and events
-            gameState.world.npcs.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                type: 'civilian',
-                color: 'green'
-            });
-        }
-
-        function spawnExplorationEvents() {
-            // Add exploration opportunities
-            gameState.world.buildings.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                width: 60,
-                height: 60,
-                type: 'mystery'
-            });
-        }
-
-        // Update game state
-        function update() {
-            // Player movement
-            if (keys['ArrowUp'] || keys['w']) gameState.player.y -= gameState.player.speed;
-            if (keys['ArrowDown'] || keys['s']) gameState.player.y += gameState.player.speed;
-            if (keys['ArrowLeft'] || keys['a']) gameState.player.x -= gameState.player.speed;
-            if (keys['ArrowRight'] || keys['d']) gameState.player.x += gameState.player.speed;
-
-            // Keep player in bounds
-            gameState.player.x = Math.max(0, Math.min(canvas.width, gameState.player.x));
-            gameState.player.y = Math.max(0, Math.min(canvas.height, gameState.player.y));
-
-            // Update UI
-            document.getElementById('player-stats').textContent = 
-                `Role: ${gameState.player.role} | Reputation: ${gameState.player.reputation}`;
-            document.getElementById('location-info').textContent = 
-                `Current Area: ${gameState.world.currentArea}`;
-        }
-
-        // Render game
-        function render() {
-            ctx.fillStyle = '#1a472a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw buildings
-            for (const building of gameState.world.buildings) {
-                ctx.fillStyle = building.type === 'police' ? '#2c3e50' : 
-                               building.type === 'shop' ? '#8e44ad' : '#2c3e50';
-                ctx.fillRect(building.x, building.y, building.width, building.height);
+        function spawnNPCs() {
+            const npcTypes = ['civilian', 'police', 'merchant', 'criminal'];
+            for (let i = 0; i < 100; i++) {
+                createNPC(npcTypes[Math.floor(Math.random() * npcTypes.length)]);
             }
+        }
 
-            // Draw NPCs
-            for (const npc of gameState.world.npcs) {
-                ctx.fillStyle = npc.color;
-                ctx.beginPath();
-                ctx.arc(npc.x, npc.y, 10, 0, Math.PI * 2);
-                ctx.fill();
+        function createNPC(type) {
+            const npc = {
+                type: type,
+                position: new THREE.Vector3(
+                    Math.random() * 1000 - 500,
+                    0,
+                    Math.random() * 1000 - 500
+                ),
+                model: null,
+                ai: {
+                    state: 'idle',
+                    target: null,
+                    pathfinding: [],
+                    behavior: type
+                }
+            };
+            
+            // Create NPC mesh
+            const geometry = new THREE.CapsuleGeometry(1, 4, 4, 8);
+            const material = new THREE.MeshStandardMaterial({
+                color: type === 'police' ? 0x0000ff : 
+                       type === 'criminal' ? 0xff0000 : 0x00ff00
+            });
+            npc.model = new THREE.Mesh(geometry, material);
+            npc.model.position.copy(npc.position);
+            scene.add(npc.model);
+            NPCs.push(npc);
+        }
+
+        function initializeVehicles() {
+            const vehicleTypes = ['car', 'motorcycle', 'helicopter'];
+            for (let i = 0; i < 20; i++) {
+                createVehicle(vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)]);
             }
+        }
 
-            // Draw player
-            ctx.fillStyle = '#f1c40f';
-            ctx.beginPath();
-            ctx.arc(gameState.player.x, gameState.player.y, 15, 0, Math.PI * 2);
-            ctx.fill();
+        function createVehicle(type) {
+            // Basic vehicle geometry
+            let geometry, material;
+            switch(type) {
+                case 'car':
+                    geometry = new THREE.BoxGeometry(6, 2, 4);
+                    break;
+                case 'motorcycle':
+                    geometry = new THREE.BoxGeometry(3, 2, 1);
+                    break;
+                case 'helicopter':
+                    geometry = new THREE.BoxGeometry(8, 3, 8);
+                    break;
+            }
+            
+            material = new THREE.MeshStandardMaterial({
+                color: Math.random() * 0xffffff,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            
+            const vehicle = new THREE.Mesh(geometry, material);
+            vehicle.position.set(
+                Math.random() * 1000 - 500,
+                2,
+                Math.random() * 1000 - 500
+            );
+            vehicle.castShadow = true;
+            scene.add(vehicle);
+            vehicles.push({
+                type: type,
+                model: vehicle,
+                speed: 0,
+                maxSpeed: type === 'helicopter' ? 200 : 100,
+                handling: type === 'motorcycle' ? 0.9 : 0.7
+            });
+        }
+
+        function initializePhysics() {
+            // Basic physics system
+            const physics = {
+                gravity: -9.81,
+                friction: 0.1,
+                collision: true
+            };
+            
+            // Collision detection
+            function checkCollisions() {
+                // Implementation of collision detection
+            }
+            
+            // Physics update loop
+            setInterval(() => {
+                checkCollisions();
+                updatePhysics();
+            }, 1000 / 60);
+        }
+
+        function updatePhysics() {
+            // Update physics for all entities
+            NPCs.forEach(npc => {
+                // NPC physics update
+            });
+            
+            vehicles.forEach(vehicle => {
+                // Vehicle physics update
+            });
+            
+            // Player physics update
         }
 
         // Game loop
-        function gameLoop() {
-            update();
-            render();
-            requestAnimationFrame(gameLoop);
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update world time
+            worldState.time += timeScale;
+            
+            // Update NPCs
+            NPCs.forEach(updateNPC);
+            
+            // Update vehicles
+            vehicles.forEach(updateVehicle);
+            
+            // Update player
+            updatePlayer();
+            
+            // Update weather and environment
+            updateEnvironment();
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+
+        function updateNPC(npc) {
+            // AI behavior update
+            switch(npc.ai.state) {
+                case 'idle':
+                    // Random wandering
+                    break;
+                case 'following':
+                    // Follow target
+                    break;
+                case 'fleeing':
+                    // Run from danger
+                    break;
+            }
+            
+            // Update NPC position
+            npc.model.position.lerp(npc.position, 0.1);
+        }
+
+        function updateVehicle(vehicle) {
+            // Vehicle physics and movement
+            if (vehicle.speed > 0) {
+                vehicle.model.position.add(vehicle.model.getWorldDirection().multiplyScalar(vehicle.speed));
+            }
+        }
+
+        function updatePlayer() {
+            // Update player status
+            playerState.energy = Math.max(0, Math.min(100, playerState.energy - 0.01));
+            
+            // Update UI
+            document.getElementById('stats').textContent = 
+                `Health: ${playerState.health} | Energy: ${Math.floor(playerState.energy)} | Money: $${playerState.money}`;
+        }
+
+        function updateEnvironment() {
+            // Time of day
+            const dayNightCycle = (Math.sin(worldState.time / 1000) + 1) / 2;
+            scene.background = new THREE.Color(dayNightCycle * 0.5, dayNightCycle * 0.5, dayNightCycle);
+            
+            // Weather effects
+            if (Math.random() < 0.001) {
+                changeWeather();
+            }
+        }
+
+        function changeWeather() {
+            const weathers = ['clear', 'rain', 'fog', 'storm'];
+            worldState.weather = weathers[Math.floor(Math.random() * weathers.length)];
+            
+            // Apply weather effects
+            switch(worldState.weather) {
+                case 'rain':
+                    createRainEffect();
+                    break;
+                case 'fog':
+                    createFogEffect();
+                    break;
+                case 'storm':
+                    createStormEffect();
+                    break;
+            }
+        }
+
+        // Weather effects
+        function createRainEffect() {
+            // Particle system for rain
+        }
+
+        function createFogEffect() {
+            scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
+        }
+
+        function createStormEffect() {
+            // Lightning and thunder effects
+        }
+
+        // Event handlers
+        window.addEventListener('resize', onWindowResize, false);
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         // Initialize game
-        generateNPCs();
-        generateBuildings();
-        gameLoop();
+        init4DWorld();
+        
+        // Remove loading screen
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.display = 'none';
+        }, 2000);
 
-        // Instructions alert
-        alert('Welcome to the Open World Game!\n\nControls:\nWASD or Arrow Keys to move\nE to interact when near NPCs or buildings\n\nExplore the world and your actions will shape the game!');
+        // Controls
+        document.addEventListener('keydown', (event) => {
+            switch(event.key) {
+                case 'w':
+                    // Move forward
+                    break;
+                case 's':
+                    // Move backward
+                    break;
+                case 'a':
+                    // Move left
+                    break;
+                case 'd':
+                    // Move right
+                    break;
+                case 'e':
+                    // Interact
+                    break;
+                case 'i':
+                    // Toggle inventory
+                    document.getElementById('inventory').style.display = 
+                        document.getElementById('inventory').style.display === 'none' ? 'block' : 'none';
+                    break;
+            }
+        });
     </script>
 </body>
 </html>
