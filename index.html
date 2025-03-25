@@ -3,490 +3,408 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4D Open World Game</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/four.js@1.0.0/build/four.min.js"></script>
-    <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/GLTFLoader.js"></script>
+    <title>Open World RPG</title>
+    <!-- Enhanced Graphics Libraries -->
+    <script async src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/PointerLockControls.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+        }
         #ui-overlay {
             position: fixed;
-            top: 10px;
-            left: 10px;
-            color: #fff;
-            font-family: 'Arial', sans-serif;
-            text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
-        #stats {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 5px;
-            color: #fff;
-        }
-        #inventory {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 5px;
-            color: #fff;
-            display: none;
-        }
-        .menu {
-            position: fixed;
-            padding: 20px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            border-radius: 10px;
-            display: none;
-            z-index: 1000;
-        }
-        .action-button {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .action-button:hover {
-            background: rgba(255,255,255,0.4);
-        }
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
-            background: black;
+            pointer-events: none;
+        }
+        #health-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #fff;
+        }
+        #health-fill {
+            width: 100%;
+            height: 100%;
+            background: #ff3333;
+            transition: width 0.3s;
+        }
+        #stamina-bar {
+            position: fixed;
+            bottom: 45px;
+            left: 20px;
+            width: 200px;
+            height: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #fff;
+        }
+        #stamina-fill {
+            width: 100%;
+            height: 100%;
+            background: #33cc33;
+            transition: width 0.3s;
+        }
+        #weapon-slot {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #fff;
             display: flex;
-            justify-content: center;
             align-items: center;
-            color: white;
-            font-size: 24px;
-            z-index: 2000;
+            justify-content: center;
+            color: #fff;
         }
         #minimap {
             position: fixed;
-            bottom: 10px;
-            right: 10px;
+            top: 20px;
+            right: 20px;
             width: 200px;
             height: 200px;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #fff;
             border-radius: 50%;
-            border: 2px solid white;
+        }
+        #loading-screen {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            z-index: 9999;
+        }
+        #loading-bar {
+            width: 300px;
+            height: 20px;
+            background: #333;
+            margin-top: 20px;
+            border: 2px solid #fff;
+        }
+        #loading-progress {
+            width: 0%;
+            height: 100%;
+            background: #ff3333;
+            transition: width 0.3s;
+        }
+        .warning {
+            color: #ff3333;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        #start-button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #ff3333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            display: none;
+        }
+        #start-button:hover {
+            background: #cc0000;
+        }
+        #interaction-prompt {
+            position: fixed;
+            bottom: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        #damage-overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle, transparent 50%, rgba(255,0,0,0.3) 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
         }
     </style>
 </head>
 <body>
-    <div id="loading-screen">Loading World...</div>
+    <div id="loading-screen">
+        <h1>OPEN WORLD RPG</h1>
+        <div id="loading-bar">
+            <div id="loading-progress"></div>
+        </div>
+        <p class="warning">Warning: This game contains mature content and violence.</p>
+        <p>Recommended for ages 16+</p>
+        <button id="start-button">Enter World</button>
+    </div>
+
     <div id="ui-overlay">
-        <h2 id="location">Downtown District</h2>
-        <div id="mission-info"></div>
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <div id="stamina-bar"><div id="stamina-fill"></div></div>
+        <div id="weapon-slot">FISTS</div>
+        <div id="minimap"></div>
+        <div id="interaction-prompt"></div>
+        <div id="damage-overlay"></div>
     </div>
-    <div id="stats">
-        Health: 100 | Energy: 100 | Money: $1000
-    </div>
-    <div id="inventory"></div>
-    <div id="minimap"></div>
+
+    <canvas id="gameCanvas"></canvas>
 
     <script>
-        // Initialize core systems
-        let scene, camera, renderer, world4D;
-        let player, NPCs = [], buildings = [], vehicles = [];
-        let timeScale = 1;
-        let worldState = {
-            time: 0,
-            weather: 'clear',
-            events: []
+        // Game Configuration
+        const GAME_CONFIG = {
+            graphics: {
+                shadows: true,
+                particles: true,
+                postProcessing: true,
+                quality: 'high',
+                viewDistance: 1000
+            },
+            physics: {
+                gravity: -9.81,
+                friction: 0.5,
+                restitution: 0.3
+            },
+            gameplay: {
+                difficulty: 'normal',
+                combatIntensity: 0.7,
+                npcDensity: 50,
+                weatherEffects: true
+            }
         };
 
-        // Player state
-        const playerState = {
-            health: 100,
-            energy: 100,
-            money: 1000,
-            inventory: [],
-            skills: {
-                combat: 0,
-                driving: 0,
-                stealth: 0,
-                charisma: 0
+        // Game State
+        const gameState = {
+            player: {
+                health: 100,
+                stamina: 100,
+                money: 1000,
+                inventory: [],
+                weapons: [],
+                currentWeapon: null,
+                wanted: 0,
+                skills: {
+                    shooting: 1,
+                    melee: 1,
+                    driving: 1,
+                    stealth: 1
+                }
             },
-            reputation: {
-                police: 0,
-                criminals: 0,
-                civilians: 0
-            },
-            currentMission: null
+            world: {
+                time: 0,
+                weather: 'clear',
+                location: 'wilderness',
+                crimes: [],
+                activeQuests: []
+            }
         };
 
-        // Initialize 4D world
-        function init4DWorld() {
+        let scene, camera, renderer, physics, controls;
+        let loadingProgress = 0;
+
+        // Initialize Three.js scene
+        async function initGame() {
+            try {
+                await loadResources();
+                setupScene();
+                setupPhysics();
+                setupLighting();
+                createWorld();
+                setupControls();
+                setupEventListeners();
+                startGameLoop();
+            } catch (error) {
+                console.error('Failed to initialize game:', error);
+                showError('Failed to load game resources. Please refresh.');
+            }
+        }
+
+        // Resource loading
+        async function loadResources() {
+            const resources = [
+                'models',
+                'textures',
+                'sounds',
+                'animations'
+            ];
+
+            for (const resource of resources) {
+                await fakeLoadResource(resource);
+                updateLoadingProgress(loadingProgress + 25);
+            }
+        }
+
+        // Simulate resource loading
+        function fakeLoadResource(resource) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    console.log(`Loaded ${resource}`);
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        // Update loading progress
+        function updateLoadingProgress(progress) {
+            loadingProgress = progress;
+            document.getElementById('loading-progress').style.width = `${progress}%`;
+            if (progress >= 100) {
+                document.getElementById('start-button').style.display = 'block';
+            }
+        }
+
+        // Scene setup
+        function setupScene() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, GAME_CONFIG.graphics.viewDistance);
+            renderer = new THREE.WebGLRenderer({
+                canvas: document.getElementById('gameCanvas'),
+                antialias: true
+            });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            document.body.appendChild(renderer.domElement);
+            renderer.shadowMap.enabled = GAME_CONFIG.graphics.shadows;
+        }
 
-            // Add ambient light
+        // Physics setup
+        function setupPhysics() {
+            physics = new CANNON.World();
+            physics.gravity.set(0, GAME_CONFIG.physics.gravity, 0);
+        }
+
+        // Lighting setup
+        function setupLighting() {
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
 
-            // Add directional light (sun)
             const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-            directionalLight.position.set(5, 5, 5);
+            directionalLight.position.set(100, 100, 50);
             directionalLight.castShadow = true;
             scene.add(directionalLight);
+        }
 
-            // Initialize 4D components
-            initializeFourDimensions();
-            
-            // Generate world
-            generateTerrain();
-            generateBuildings();
+        // World creation
+        function createWorld() {
+            createTerrain();
+            createBuildings();
+            createVehicles();
             spawnNPCs();
-            initializeVehicles();
-            
-            // Set up physics
-            initializePhysics();
-            
-            // Start animation loop
-            animate();
         }
 
-        function initializeFourDimensions() {
-            // 4D space-time manipulation
-            world4D = {
-                dimensions: ['x', 'y', 'z', 'w'],
-                currentTimeline: 0,
-                timeflowRate: 1,
-                alternateRealities: [],
-                
-                warpSpace: function(x, y, z, w) {
-                    // Implementation of 4D space warping
-                },
-                
-                timelineShift: function(delta) {
-                    // Timeline manipulation logic
-                }
-            };
+        // Create realistic terrain
+        function createTerrain() {
+            // Implement heightmap-based terrain generation
         }
 
-        function generateTerrain() {
-            // Create procedural terrain
-            const geometry = new THREE.PlaneGeometry(1000, 1000, 100, 100);
-            const material = new THREE.MeshStandardMaterial({
-                color: 0x3a8c3a,
-                roughness: 0.8,
-                metalness: 0.2
-            });
-            const terrain = new THREE.Mesh(geometry, material);
-            terrain.rotation.x = -Math.PI / 2;
-            terrain.receiveShadow = true;
-            scene.add(terrain);
+        // Create buildings
+        function createBuildings() {
+            // Implement procedural building generation
         }
 
-        function generateBuildings() {
-            const buildingTypes = [
-                { type: 'skyscraper', height: 100, texture: 'glass' },
-                { type: 'house', height: 20, texture: 'brick' },
-                { type: 'shop', height: 30, texture: 'concrete' }
-            ];
-
-            for (let i = 0; i < 50; i++) {
-                const type = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
-                createBuilding(type);
-            }
+        // Create vehicles
+        function createVehicles() {
+            // Implement vehicle system
         }
 
-        function createBuilding(type) {
-            const geometry = new THREE.BoxGeometry(
-                10 + Math.random() * 20,
-                type.height,
-                10 + Math.random() * 20
-            );
-            const material = new THREE.MeshStandardMaterial({
-                color: Math.random() * 0xffffff,
-                roughness: 0.7,
-                metalness: 0.3
-            });
-            const building = new THREE.Mesh(geometry, material);
-            building.position.set(
-                Math.random() * 1000 - 500,
-                type.height / 2,
-                Math.random() * 1000 - 500
-            );
-            building.castShadow = true;
-            building.receiveShadow = true;
-            scene.add(building);
-            buildings.push(building);
-        }
-
+        // Spawn NPCs
         function spawnNPCs() {
-            const npcTypes = ['civilian', 'police', 'merchant', 'criminal'];
-            for (let i = 0; i < 100; i++) {
-                createNPC(npcTypes[Math.floor(Math.random() * npcTypes.length)]);
-            }
+            // Implement NPC system with AI
         }
 
-        function createNPC(type) {
-            const npc = {
-                type: type,
-                position: new THREE.Vector3(
-                    Math.random() * 1000 - 500,
-                    0,
-                    Math.random() * 1000 - 500
-                ),
-                model: null,
-                ai: {
-                    state: 'idle',
-                    target: null,
-                    pathfinding: [],
-                    behavior: type
-                }
-            };
-            
-            // Create NPC mesh
-            const geometry = new THREE.CapsuleGeometry(1, 4, 4, 8);
-            const material = new THREE.MeshStandardMaterial({
-                color: type === 'police' ? 0x0000ff : 
-                       type === 'criminal' ? 0xff0000 : 0x00ff00
-            });
-            npc.model = new THREE.Mesh(geometry, material);
-            npc.model.position.copy(npc.position);
-            scene.add(npc.model);
-            NPCs.push(npc);
+        // Combat system
+        function initiateCombat(target) {
+            // Implement realistic combat mechanics
         }
 
-        function initializeVehicles() {
-            const vehicleTypes = ['car', 'motorcycle', 'helicopter'];
-            for (let i = 0; i < 20; i++) {
-                createVehicle(vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)]);
-            }
+        // Damage system
+        function applyDamage(amount) {
+            gameState.player.health -= amount;
+            updateHealthBar();
+            showDamageEffect();
         }
 
-        function createVehicle(type) {
-            // Basic vehicle geometry
-            let geometry, material;
-            switch(type) {
-                case 'car':
-                    geometry = new THREE.BoxGeometry(6, 2, 4);
-                    break;
-                case 'motorcycle':
-                    geometry = new THREE.BoxGeometry(3, 2, 1);
-                    break;
-                case 'helicopter':
-                    geometry = new THREE.BoxGeometry(8, 3, 8);
-                    break;
-            }
-            
-            material = new THREE.MeshStandardMaterial({
-                color: Math.random() * 0xffffff,
-                metalness: 0.8,
-                roughness: 0.2
-            });
-            
-            const vehicle = new THREE.Mesh(geometry, material);
-            vehicle.position.set(
-                Math.random() * 1000 - 500,
-                2,
-                Math.random() * 1000 - 500
-            );
-            vehicle.castShadow = true;
-            scene.add(vehicle);
-            vehicles.push({
-                type: type,
-                model: vehicle,
-                speed: 0,
-                maxSpeed: type === 'helicopter' ? 200 : 100,
-                handling: type === 'motorcycle' ? 0.9 : 0.7
-            });
+        // Update UI
+        function updateHealthBar() {
+            document.getElementById('health-fill').style.width = `${gameState.player.health}%`;
         }
 
-        function initializePhysics() {
-            // Basic physics system
-            const physics = {
-                gravity: -9.81,
-                friction: 0.1,
-                collision: true
-            };
-            
-            // Collision detection
-            function checkCollisions() {
-                // Implementation of collision detection
-            }
-            
-            // Physics update loop
-            setInterval(() => {
-                checkCollisions();
-                updatePhysics();
-            }, 1000 / 60);
-        }
-
-        function updatePhysics() {
-            // Update physics for all entities
-            NPCs.forEach(npc => {
-                // NPC physics update
-            });
-            
-            vehicles.forEach(vehicle => {
-                // Vehicle physics update
-            });
-            
-            // Player physics update
+        // Show damage effect
+        function showDamageEffect() {
+            const overlay = document.getElementById('damage-overlay');
+            overlay.style.opacity = '1';
+            setTimeout(() => overlay.style.opacity = '0', 300);
         }
 
         // Game loop
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Update world time
-            worldState.time += timeScale;
-            
-            // Update NPCs
-            NPCs.forEach(updateNPC);
-            
-            // Update vehicles
-            vehicles.forEach(updateVehicle);
-            
-            // Update player
-            updatePlayer();
-            
-            // Update weather and environment
-            updateEnvironment();
-            
-            // Render scene
-            renderer.render(scene, camera);
-        }
-
-        function updateNPC(npc) {
-            // AI behavior update
-            switch(npc.ai.state) {
-                case 'idle':
-                    // Random wandering
-                    break;
-                case 'following':
-                    // Follow target
-                    break;
-                case 'fleeing':
-                    // Run from danger
-                    break;
+        function startGameLoop() {
+            function animate() {
+                requestAnimationFrame(animate);
+                updatePhysics();
+                updateNPCs();
+                updateWorld();
+                renderer.render(scene, camera);
             }
-            
-            // Update NPC position
-            npc.model.position.lerp(npc.position, 0.1);
+            animate();
         }
 
-        function updateVehicle(vehicle) {
-            // Vehicle physics and movement
-            if (vehicle.speed > 0) {
-                vehicle.model.position.add(vehicle.model.getWorldDirection().multiplyScalar(vehicle.speed));
-            }
+        // Physics update
+        function updatePhysics() {
+            physics.step(1/60);
         }
 
-        function updatePlayer() {
-            // Update player status
-            playerState.energy = Math.max(0, Math.min(100, playerState.energy - 0.01));
-            
-            // Update UI
-            document.getElementById('stats').textContent = 
-                `Health: ${playerState.health} | Energy: ${Math.floor(playerState.energy)} | Money: $${playerState.money}`;
+        // NPC update
+        function updateNPCs() {
+            // Update NPC AI and behaviors
         }
 
-        function updateEnvironment() {
-            // Time of day
-            const dayNightCycle = (Math.sin(worldState.time / 1000) + 1) / 2;
-            scene.background = new THREE.Color(dayNightCycle * 0.5, dayNightCycle * 0.5, dayNightCycle);
-            
-            // Weather effects
-            if (Math.random() < 0.001) {
-                changeWeather();
-            }
+        // World update
+        function updateWorld() {
+            // Update time, weather, and events
         }
 
-        function changeWeather() {
-            const weathers = ['clear', 'rain', 'fog', 'storm'];
-            worldState.weather = weathers[Math.floor(Math.random() * weathers.length)];
-            
-            // Apply weather effects
-            switch(worldState.weather) {
-                case 'rain':
-                    createRainEffect();
-                    break;
-                case 'fog':
-                    createFogEffect();
-                    break;
-                case 'storm':
-                    createStormEffect();
-                    break;
-            }
+        // Event listeners
+        function setupEventListeners() {
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('mousedown', onMouseDown);
         }
 
-        // Weather effects
-        function createRainEffect() {
-            // Particle system for rain
-        }
-
-        function createFogEffect() {
-            scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
-        }
-
-        function createStormEffect() {
-            // Lightning and thunder effects
-        }
-
-        // Event handlers
-        window.addEventListener('resize', onWindowResize, false);
-
+        // Window resize handler
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // Initialize game
-        init4DWorld();
-        
-        // Remove loading screen
-        setTimeout(() => {
-            document.getElementById('loading-screen').style.display = 'none';
-        }, 2000);
+        // Key press handler
+        function onKeyDown(event) {
+            // Handle player input
+        }
 
-        // Controls
-        document.addEventListener('keydown', (event) => {
-            switch(event.key) {
-                case 'w':
-                    // Move forward
-                    break;
-                case 's':
-                    // Move backward
-                    break;
-                case 'a':
-                    // Move left
-                    break;
-                case 'd':
-                    // Move right
-                    break;
-                case 'e':
-                    // Interact
-                    break;
-                case 'i':
-                    // Toggle inventory
-                    document.getElementById('inventory').style.display = 
-                        document.getElementById('inventory').style.display === 'none' ? 'block' : 'none';
-                    break;
-            }
+        // Mouse click handler
+        function onMouseDown(event) {
+            // Handle shooting and interaction
+        }
+
+        // Start button click handler
+        document.getElementById('start-button').addEventListener('click', () => {
+            document.getElementById('loading-screen').style.display = 'none';
+            initGame();
         });
     </script>
 </body>
