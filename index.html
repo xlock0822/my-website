@@ -3,75 +3,276 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xavier Lockett - Personal Website</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Open World Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+        #ui-overlay {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            pointer-events: none;
+        }
+        #action-menu {
+            position: fixed;
+            right: 10px;
+            top: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            color: white;
+            display: none;
+        }
+        .menu-item {
+            cursor: pointer;
+            padding: 5px;
+            margin: 2px;
+            background: rgba(255,255,255,0.1);
+        }
+        .menu-item:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
 </head>
-<body class="bg-gray-50">
-    <header class="bg-blue-600 text-white shadow-lg">
-        <nav class="container mx-auto px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="text-2xl font-bold">Xavier Lockett</div>
-                <div class="space-x-6">
-                    <a href="#home" class="hover:text-blue-200 transition">Home</a>
-                    <a href="#projects" class="hover:text-blue-200 transition">Projects</a>
-                    <a href="#contact" class="hover:text-blue-200 transition">Contact</a>
-                </div>
-            </div>
-        </nav>
-    </header>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-overlay">
+        <div id="player-stats">Role: Civilian | Reputation: 0</div>
+        <div id="location-info">Current Area: City Center</div>
+    </div>
+    <div id="action-menu"></div>
 
-    <main class="container mx-auto px-6 py-12">
-        <section id="home" class="mb-16">
-            <div class="text-center mb-12">
-                <h1 class="text-5xl font-bold text-gray-800 mb-4">Welcome to My Portfolio</h1>
-                <p class="text-xl text-gray-600">Software Developer & Creative Thinker</p>
-            </div>
-        </section>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const uiOverlay = document.getElementById('ui-overlay');
+        const actionMenu = document.getElementById('action-menu');
 
-        <section id="projects" class="mb-16">
-            <h2 class="text-3xl font-bold text-gray-800 mb-8">Featured Projects</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2">Project One</h3>
-                        <p class="text-gray-600 mb-4">Description of your first major project and its impact.</p>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Learn More →</a>
-                    </div>
-                </div>
-                <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2">Project Two</h3>
-                        <p class="text-gray-600 mb-4">Description of your second project and its key features.</p>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Learn More →</a>
-                    </div>
-                </div>
-                <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold mb-2">Project Three</h3>
-                        <p class="text-gray-600 mb-4">Description of your third project and its achievements.</p>
-                        <a href="#" class="text-blue-600 hover:text-blue-800">Learn More →</a>
-                    </div>
-                </div>
-            </div>
-        </section>
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
-        <section id="contact" class="bg-white rounded-lg shadow-md p-8">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6">Get In Touch</h2>
-            <div class="space-y-4">
-                <p class="text-gray-600">Interested in collaboration? Let's connect!</p>
-                <div class="flex space-x-4">
-                    <a href="https://github.com/xlock0822" class="text-blue-600 hover:text-blue-800">GitHub</a>
-                    <a href="#" class="text-blue-600 hover:text-blue-800">LinkedIn</a>
-                    <a href="mailto:your.email@example.com" class="text-blue-600 hover:text-blue-800">Email</a>
-                </div>
-            </div>
-        </section>
-    </main>
+        // Game state
+        const gameState = {
+            player: {
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                speed: 5,
+                role: 'civilian',
+                reputation: 0,
+                preferences: {
+                    combat: 0,
+                    social: 0,
+                    exploration: 0
+                }
+            },
+            world: {
+                npcs: [],
+                buildings: [],
+                currentArea: 'City Center',
+                time: 0
+            },
+            activities: {
+                available: ['explore', 'interact', 'mission', 'fight'],
+                current: null
+            }
+        };
 
-    <footer class="bg-gray-800 text-white mt-12">
-        <div class="container mx-auto px-6 py-4">
-            <p class="text-center">&copy; 2025 Xavier Lockett. All rights reserved.</p>
-        </div>
-    </footer>
+        // Generate random NPCs
+        function generateNPCs() {
+            for (let i = 0; i < 10; i++) {
+                gameState.world.npcs.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    type: ['civilian', 'merchant', 'guard'][Math.floor(Math.random() * 3)],
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)`
+                });
+            }
+        }
+
+        // Generate buildings
+        function generateBuildings() {
+            for (let i = 0; i < 15; i++) {
+                gameState.world.buildings.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    width: 50 + Math.random() * 100,
+                    height: 50 + Math.random() * 100,
+                    type: ['shop', 'house', 'police'][Math.floor(Math.random() * 3)]
+                });
+            }
+        }
+
+        // Input handling
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keydown', e => {
+            if (e.key === 'e') {
+                toggleActionMenu();
+            }
+        });
+        window.addEventListener('keyup', e => keys[e.key] = false);
+
+        // Action menu
+        function toggleActionMenu() {
+            const nearby = checkNearbyInteractions();
+            if (nearby.length > 0) {
+                actionMenu.style.display = 'block';
+                actionMenu.innerHTML = nearby.map(action => 
+                    `<div class="menu-item" onclick="performAction('${action}')">${action}</div>`
+                ).join('');
+            } else {
+                actionMenu.style.display = 'none';
+            }
+        }
+
+        function checkNearbyInteractions() {
+            const actions = [];
+            // Check NPCs
+            for (const npc of gameState.world.npcs) {
+                const distance = Math.hypot(npc.x - gameState.player.x, npc.y - gameState.player.y);
+                if (distance < 50) {
+                    actions.push(`Talk to ${npc.type}`);
+                    if (npc.type === 'merchant') actions.push('Trade');
+                    if (npc.type === 'guard' && gameState.player.role === 'civilian') 
+                        actions.push('Join Police Force');
+                }
+            }
+            // Check buildings
+            for (const building of gameState.world.buildings) {
+                if (isPlayerNearBuilding(building)) {
+                    actions.push(`Enter ${building.type}`);
+                }
+            }
+            return actions;
+        }
+
+        function isPlayerNearBuilding(building) {
+            return Math.abs(gameState.player.x - building.x) < 50 &&
+                   Math.abs(gameState.player.y - building.y) < 50;
+        }
+
+        function performAction(action) {
+            console.log(`Performing action: ${action}`);
+            // Update player preferences based on chosen actions
+            if (action.includes('fight')) gameState.player.preferences.combat++;
+            if (action.includes('Talk')) gameState.player.preferences.social++;
+            if (action.includes('Enter')) gameState.player.preferences.exploration++;
+            
+            // Adjust game based on preferences
+            adaptGameToPreferences();
+        }
+
+        function adaptGameToPreferences() {
+            const prefs = gameState.player.preferences;
+            if (prefs.combat > Math.max(prefs.social, prefs.exploration)) {
+                // Spawn more combat opportunities
+                spawnCombatEvents();
+            } else if (prefs.social > Math.max(prefs.combat, prefs.exploration)) {
+                // Spawn more social interactions
+                spawnSocialEvents();
+            } else {
+                // Spawn more exploration opportunities
+                spawnExplorationEvents();
+            }
+        }
+
+        function spawnCombatEvents() {
+            // Add combat-related NPCs and events
+            gameState.world.npcs.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                type: 'opponent',
+                color: 'red'
+            });
+        }
+
+        function spawnSocialEvents() {
+            // Add social NPCs and events
+            gameState.world.npcs.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                type: 'civilian',
+                color: 'green'
+            });
+        }
+
+        function spawnExplorationEvents() {
+            // Add exploration opportunities
+            gameState.world.buildings.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                width: 60,
+                height: 60,
+                type: 'mystery'
+            });
+        }
+
+        // Update game state
+        function update() {
+            // Player movement
+            if (keys['ArrowUp'] || keys['w']) gameState.player.y -= gameState.player.speed;
+            if (keys['ArrowDown'] || keys['s']) gameState.player.y += gameState.player.speed;
+            if (keys['ArrowLeft'] || keys['a']) gameState.player.x -= gameState.player.speed;
+            if (keys['ArrowRight'] || keys['d']) gameState.player.x += gameState.player.speed;
+
+            // Keep player in bounds
+            gameState.player.x = Math.max(0, Math.min(canvas.width, gameState.player.x));
+            gameState.player.y = Math.max(0, Math.min(canvas.height, gameState.player.y));
+
+            // Update UI
+            document.getElementById('player-stats').textContent = 
+                `Role: ${gameState.player.role} | Reputation: ${gameState.player.reputation}`;
+            document.getElementById('location-info').textContent = 
+                `Current Area: ${gameState.world.currentArea}`;
+        }
+
+        // Render game
+        function render() {
+            ctx.fillStyle = '#1a472a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw buildings
+            for (const building of gameState.world.buildings) {
+                ctx.fillStyle = building.type === 'police' ? '#2c3e50' : 
+                               building.type === 'shop' ? '#8e44ad' : '#2c3e50';
+                ctx.fillRect(building.x, building.y, building.width, building.height);
+            }
+
+            // Draw NPCs
+            for (const npc of gameState.world.npcs) {
+                ctx.fillStyle = npc.color;
+                ctx.beginPath();
+                ctx.arc(npc.x, npc.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw player
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(gameState.player.x, gameState.player.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize game
+        generateNPCs();
+        generateBuildings();
+        gameLoop();
+
+        // Instructions alert
+        alert('Welcome to the Open World Game!\n\nControls:\nWASD or Arrow Keys to move\nE to interact when near NPCs or buildings\n\nExplore the world and your actions will shape the game!');
+    </script>
 </body>
 </html>
